@@ -42,9 +42,9 @@ node scripts/configure-single-hub.cjs           # show plan
 node scripts/configure-single-hub.cjs --apply   # apply reversible status changes
 ```
 
-Restart the backend after applying externally so cached hub/station lists are cleared. Deploy the backend/admin source changes to make chosen-hub inventory filtering and record management available live. This review does not claim those local source changes were deployed.
+Deployed commit `10c8fab` through the Railway-linked main branch on 12 October. Build and startup succeeded; PostgreSQL connected and the backend listened on port 3000. Normal admin login succeeded. The live Admin “Manage records” catalogue lists hubs with Create/View/Edit/Delete controls. The operational network views show one hub (Bahadurpally) and zero stations. Database startup no longer automatically accepts data loss. Existing authentication/payment launch blockers remain.
 
-In particular, the old live catalogue endpoint may ignore the requested hubId and return overall fleet availability. Deploy the backend filter before relying on model-level availability at Bahadurpally. The home hub totals come from the actual hub endpoint; no vehicles were moved to Bahadurpally in this task.
+The deployed catalogue filters inventory by the selected active hub. No vehicles were moved to Bahadurpally in this task, so its available inventory is zero.
 
 Repeat the read-only local consistency check after compiling the backend:
 
@@ -53,4 +53,20 @@ npx tsc
 node scripts/check-shared-data.cjs
 ```
 
-Physical-device acceptance and live rider-account checks remain pending. An automatic approval review rejected creating a live admin token with the local JWT signing key because that method was not explicitly authorized; the command was not executed. Live UI work used the user's signed-in admin session.
+Physical-device acceptance remains pending. Live rider APIs were verified through normal login with user-supplied credentials. An earlier automatic approval review rejected creating a live admin token with the local JWT signing key; that command was not executed. Live work used normal app login and the authenticated Railway session.
+
+## KYC status correction
+
+For the user-reported account, production PostgreSQL has KYC status PENDING and no verification records. Normal login checks of `/kyc/me` and `/user/profile` both returned HTTP 200 and PENDING; `/kyc/me` has no latest submission. The dashboard review queue correctly has no submission for that account.
+
+Mobile commit `e456736` makes `/kyc/me` the sole profile-screen KYC status source, handles PENDING on refresh, prevents older requests from overriding a newly confirmed submission, and displays refresh failures. It requires successful document references and a saved SUBMITTED verification response before showing Under Review; removed fabricated document references and successful-upload messages after failed uploads. TypeScript and all 34 mobile tests passed, including eight KYC regressions.
+
+Published Android update group `f7496ced-2996-429d-849c-a5f12136c43c` to preview, runtime 1.0.1. Exported Hermes bundle contains the Railway URL and new submission-confirmation code. The installed APK can download it at launch and apply it on its following launch; actual device installation remains user-side. Documents must be uploaded and submitted again because no server submission exists. No verification record was fabricated or approved.
+
+## OTP screen latency correction
+
+Live timing check: `/health` HTTP 200 in 659 ms; `/auth/otp/request` HTTP 200 in 433 ms. Device-network latency may differ. The previous number screen waited for the request before navigating, using a shared API client with a 45-second timeout and session-refresh interceptors.
+
+Commit `d80db5f` opens the verification screen immediately and requests the challenge there. The screen shows requesting/error/retry states, blocks verification until a real challenge exists, prevents duplicate in-flight requests and honors the server resend delay. Public login requests use a separate 15-second client without token-storage waits or refresh retries. TypeScript and 43 tests passed, including seven challenge-flow regressions and two public-auth transport checks.
+
+Published Android preview update `91cf778e-aa3e-42cd-8f6e-19a5a9183b5a`, runtime 1.0.1. Verified the exported Hermes bundle contains the Railway URL and new retry message. Existing installed APK downloads the update at launch and applies it on its next launch. OTP delivery still depends on the backend/provider and device connection; screen navigation no longer waits for delivery.

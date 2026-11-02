@@ -150,8 +150,10 @@ parent.get("/health", (_req, res) => {
     res.status(503).json({ status: "unavailable" });
   }
 });
-if (basePath)
+if (basePath) {
+  parent.get("/", (_req, res) => res.redirect(308, basePath + "/"));
   parent.get(basePath, (_req, res) => res.redirect(308, basePath + "/"));
+}
 parent.use(basePath || "/", app);
 const server = parent.listen(
   Number(process.env.PORT || 3050),
