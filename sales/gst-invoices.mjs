@@ -424,10 +424,16 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         "loan vendor",
         100,
       );
-      const downPayment = money(
-        l.downPayment !== undefined ? l.downPayment : (paid || 0),
-        "down payment",
-      );
+      const rawDp = l.downPayment !== undefined ? l.downPayment : (paid || 0);
+      let downPayment = money(rawDp, "down payment");
+      if (
+        downPayment >= totals.total &&
+        Number.isInteger(Number(rawDp)) &&
+        Number(rawDp) >= 100 &&
+        Number(rawDp) < totals.total
+      ) {
+        downPayment = Number(rawDp);
+      }
       if (downPayment >= totals.total) {
         fail(
           "Down payment cannot equal or exceed total invoice amount when financing.",

@@ -312,7 +312,7 @@ export async function gstInvoiceForm({
             ? raw.customVendorName || "External Financer"
             : vendor,
         fileReference: raw.loanFileRef || "",
-        downPayment: Math.round(dpRupees * 100),
+        downPayment: dpRupees,
         downPaymentMethod: raw.loanDownPaymentMethod || "UPI",
         interestRate: Number(raw.loanInterestRate || 12),
         tenureMonths: Number(raw.loanTenure || 12),
