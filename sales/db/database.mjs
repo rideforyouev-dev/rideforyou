@@ -5,6 +5,7 @@ import { upgradeGst } from "../gst-invoices.mjs";
 import { upgradeService } from "../service.mjs";
 import { upgradeCommerce } from "./migrations/003-commerce.mjs";
 import { upgradeInvoiceDeletion } from "./migrations/004-invoice-deletion.mjs";
+import { upgradeLoans } from "./migrations/005-loans.mjs";
 export function openDatabase(data) {
   mkdirSync(data, { recursive: true });
   const db = new DatabaseSync(path.join(data, "sales.sqlite"));
@@ -63,6 +64,16 @@ CREATE TABLE IF NOT EXISTS invoice_bikes(invoice_id TEXT REFERENCES invoices(id)
             data,
             "backups",
             "before-invoice-deletion-v1-" + Date.now() + ".sqlite",
+          )
+        : undefined,
+  });
+  upgradeLoans(db, {
+    backupPath:
+      process.env.NODE_ENV === "production"
+        ? path.join(
+            data,
+            "backups",
+            "before-loans-v1-" + Date.now() + ".sqlite",
           )
         : undefined,
   });

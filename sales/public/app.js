@@ -7,6 +7,7 @@ import {
 import { gstInvoiceForm, gstInvoiceView, gstSettingsForm } from "./gst-ui.mjs";
 import { EV_HSN, DEFAULT_HSN } from "./gst.mjs";
 import { serviceScreen } from "./service-ui.mjs";
+import { loanScreen } from "./modules/loans/ui.mjs";
 const appBase = document.documentElement.dataset.base || "";
 const app = document.querySelector("#app");
 let state,
@@ -148,6 +149,7 @@ function shell(content, route) {
     ["batteries", "▱", "Batteries"],
     ["quotations", "≡", "Quotations"],
     ["invoices", "▤", "Invoices"],
+    ["loans", "₹", "Loans & EMI"],
     ["service", "↻", "Service desk"],
     ["technicians", "♧", "Technicians"],
     ["settings", "⚙", "Business settings"],
@@ -158,7 +160,7 @@ function shell(content, route) {
     )
     .join(
       "",
-    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", batteries: "Batteries", quotations: "Quotations", service: "Service desk", technicians: "Technicians", vehicles: "Vehicle history", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
+    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", batteries: "Batteries", quotations: "Quotations", loans: "Loans & EMI", service: "Service desk", technicians: "Technicians", vehicles: "Vehicle history", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
   document.querySelector("#logout").onclick = async () => {
     await api("/logout", "POST", {});
     state = null;
@@ -210,6 +212,7 @@ function render() {
   };
   if (route.split("/")[0] === "batteries") return batteryScreen(context);
   if (route.split("/")[0] === "quotations") return quotationScreen(context);
+  if (route.split("/")[0] === "loans") return loanScreen(context);
   if (route === "inventory/import") return bulkImport(route);
   if (route === "inventory/new" || route.startsWith("inventory/edit/"))
     return bikeForm(route);

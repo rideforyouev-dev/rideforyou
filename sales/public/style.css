@@ -299,6 +299,10 @@ td small {
   background: #fbf3e2;
   color: #976819;
 }
+.tag.active-tag {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
 .empty {
   text-align: center;
   padding: 60px 24px;

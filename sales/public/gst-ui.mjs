@@ -221,35 +221,154 @@ export async function gstInvoiceForm({
       `<div class="invoice-steps"><span><b>01</b> Customer</span><span><b>02</b> Vehicle & GST</span><span><b>03</b> Review</span><span><b>04</b> Issue & download</span></div><div class="notice"><b>${esc(state.settings.name)}</b> · GSTIN ${esc(state.settings.taxId)} · <a href="#settings">Business settings</a></div><form id="gstinvoiceform" class="commerce-form"><div class="split"><div><section class="panel"><div class="panelhead"><h2>Customer & delivery</h2></div><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Customer name *", "name", "", 'required maxlength="150"')}${field("Customer phone *", "phone", "", 'required type="tel" maxlength="30"')}${area("Billing address *", "address")}${field("Customer GSTIN · optional for personal buyers", "taxId", "", 'maxlength="15" autocomplete="off"')}${select("Customer billing state *", "customerState", stateOptions)}${area("Delivery address · leave blank to use billing address", "deliveryAddress")}${select("Place of supply / delivery state *", "placeOfSupply", stateOptions)}${select("Price basis *", "priceMode", priceOptions, state.settings.priceMode)}${field("Invoice date *", "date", date, `required type="date" max="${date}"`)}${field("Salesperson", "salesperson", "", 'maxlength="100"')}${select(
         "Payment method *",
         "method",
-        ["Bank transfer", "UPI", "Cash", "Not received"].map((x) => [x, x]),
+        ["Bank transfer", "UPI", "Cash", "Not received", "Loan / Finance"].map((x) => [x, x]),
         "Bank transfer",
-      )}</div><p class="form-note">Use the actual place of supply. For a normal goods delivery, this is generally where delivery ends. GST is fixed at 5% for complete EVs in this workflow.</p></div></section><section class="panel"><div class="panelhead"><h2>Electric two-wheelers</h2><button type="button" id="gstaddbike">+ Add bike</button></div><div class="panelbody"><div id="gstlines"></div><p class="form-note">HSN is stored on each bike. <a href="#inventory">Review inventory classification</a>. Prices follow the basis chosen above.</p></div></section><section class="panel"><div class="panelbody"><h2>Warranty details</h2><p class="form-note">Enter only the coverage promised for these vehicles. Leave unknown terms blank; no warranty periods are assumed. These terms apply to all bikes on this invoice.</p><div class="formgrid">${field("Vehicle warranty", "warrantyVehicle", "", 'maxlength="150" placeholder="e.g. duration / distance limit"')}${field("Battery warranty", "warrantyBattery", "", 'maxlength="150"')}${field("Motor warranty", "warrantyMotor", "", 'maxlength="150"')}${field("Controller warranty", "warrantyController", "", 'maxlength="150"')}${field("Charger warranty", "warrantyCharger", "", 'maxlength="150"')}${field("Warranty provided by", "warrantyProvider", "", 'maxlength="150"')}${field("Warranty start · defaults to invoice date", "warrantyStart", "", 'type="date"')}${area("Warranty coverage, exclusions & claim process", "warrantyTerms")}${area("Additional invoice notes / delivery terms", "notes")}</div></div></section></div><aside class="commerce-side"><section class="panel gst-sticky"><div class="panelhead"><h2>Invoice summary</h2><span class="tag">GST 5%</span></div><div class="panelbody"><div class="formgrid">${field("Discount (₹)", "discount", 0, 'type="number" min="0" step="0.01"')}${field("Amount received (₹)", "paid", 0, 'type="number" min="0" step="0.01"')}</div></div><div id="gstsummary" class="summary"></div><div class="panelbody gst-action-stack"><button type="button" id="gstpreview" class="primary">Review tax invoice →</button><button type="button" id="gstdraft">↓ Download draft PDF</button><p class="form-note">PDFs print on one A4 page, including warranty details. Review and draft downloads do not mark bikes sold or consume an invoice number.</p></div></section></aside></div><section id="gstreview" hidden></section></form>`,
+      )}</div>
+      <div id="loan-options-panel" hidden style="margin-top:16px;padding:16px;background:#f6faf6;border:1px solid #c2dec6;border-radius:8px">
+        <h3 style="margin:0 0 12px 0;font-size:15px;color:#225330">Vehicle Financing Details</h3>
+        <div class="formgrid">
+          <div class="field">
+            <label for="loanVendor">Financier / Loan Provider *</label>
+            <select id="loanVendor" name="loanVendor">
+              <option value="Ride For You">Ride For You (In-house)</option>
+              <option value="Bajaj Finserv">Bajaj Finserv</option>
+              <option value="TVS Credit">TVS Credit</option>
+              <option value="HDFC Bank">HDFC Bank</option>
+              <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
+              <option value="Shriram Finance">Shriram Finance</option>
+              <option value="Kotak Mahindra Prime">Kotak Mahindra Prime</option>
+              <option value="Other">Other External Financer</option>
+            </select>
+          </div>
+          <div class="field" id="customVendorWrap" hidden>
+            <label for="customVendorName">Specify Financer Name *</label>
+            <input id="customVendorName" name="customVendorName" placeholder="e.g. Bank / NBFC name">
+          </div>
+          <div class="field">
+            <label for="loanDownPayment">Customer Down Payment (₹) *</label>
+            <input id="loanDownPayment" name="loanDownPayment" type="number" min="0" step="0.01" value="0">
+          </div>
+          <div class="field">
+            <label for="loanDownPaymentMethod">Down Payment Mode *</label>
+            <select id="loanDownPaymentMethod" name="loanDownPaymentMethod">
+              <option value="UPI">UPI</option>
+              <option value="Cash">Cash</option>
+              <option value="Bank transfer">Bank transfer</option>
+            </select>
+          </div>
+          <div class="field" id="rfyTenureWrap">
+            <label for="loanTenure">Loan Tenure *</label>
+            <select id="loanTenure" name="loanTenure">
+              <option value="3">3 Months</option>
+              <option value="6">6 Months</option>
+              <option value="9">9 Months</option>
+              <option value="12" selected>12 Months</option>
+              <option value="18">18 Months</option>
+              <option value="24">24 Months</option>
+              <option value="36">36 Months</option>
+            </select>
+          </div>
+          <div class="field" id="rfyRateWrap">
+            <label for="loanInterestRate">Annual Interest Rate (%) *</label>
+            <input id="loanInterestRate" name="loanInterestRate" type="number" min="0" step="0.1" value="12">
+          </div>
+          <div class="field" id="rfyFirstEmiWrap">
+            <label for="loanFirstEmiDate">First EMI Due Date</label>
+            <input id="loanFirstEmiDate" name="loanFirstEmiDate" type="date">
+          </div>
+          <div class="field" id="loanFileRefWrap" hidden>
+            <label for="loanFileRef">Loan File / Application Ref #</label>
+            <input id="loanFileRef" name="loanFileRef" placeholder="e.g. FIN-12345">
+          </div>
+        </div>
+        <div id="rfyEmiPreview" style="margin-top:12px;padding:12px;background:#fff;border-radius:6px;border:1px solid #d0e4d3;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div><small class="muted">Financed Principal:</small> <b id="previewPrincipal">₹0</b></div>
+            <div><small class="muted">Total Interest:</small> <b id="previewInterest">₹0</b></div>
+            <div><small class="muted">Monthly EMI:</small> <strong id="previewEmi" style="color:#21733b;font-size:16px">₹0 / mo</strong></div>
+            <div><small class="muted">Total Repayable:</small> <b id="previewPayable">₹0</b></div>
+          </div>
+        </div>
+      </div>
+      <p class="form-note">Use the actual place of supply. For a normal goods delivery, this is generally where delivery ends. GST is fixed at 5% for complete EVs in this workflow.</p></div></section><section class="panel"><div class="panelhead"><h2>Electric two-wheelers</h2><button type="button" id="gstaddbike">+ Add bike</button></div><div class="panelbody"><div id="gstlines"></div><p class="form-note">HSN is stored on each bike. <a href="#inventory">Review inventory classification</a>. Prices follow the basis chosen above.</p></div></section><section class="panel"><div class="panelbody"><h2>Warranty details</h2><p class="form-note">Enter only the coverage promised for these vehicles. Leave unknown terms blank; no warranty periods are assumed. These terms apply to all bikes on this invoice.</p><div class="formgrid">${field("Vehicle warranty", "warrantyVehicle", "", 'maxlength="150" placeholder="e.g. duration / distance limit"')}${field("Battery warranty", "warrantyBattery", "", 'maxlength="150"')}${field("Motor warranty", "warrantyMotor", "", 'maxlength="150"')}${field("Controller warranty", "warrantyController", "", 'maxlength="150"')}${field("Charger warranty", "warrantyCharger", "", 'maxlength="150"')}${field("Warranty provided by", "warrantyProvider", "", 'maxlength="150"')}${field("Warranty start · defaults to invoice date", "warrantyStart", "", 'type="date"')}${area("Warranty coverage, exclusions & claim process", "warrantyTerms")}${area("Additional invoice notes / delivery terms", "notes")}</div></div></section></div><aside class="commerce-side"><section class="panel gst-sticky"><div class="panelhead"><h2>Invoice summary</h2><span class="tag">GST 5%</span></div><div class="panelbody"><div class="formgrid">${field("Discount (₹)", "discount", 0, 'type="number" min="0" step="0.01"')}${field("Amount received (₹)", "paid", 0, 'type="number" min="0" step="0.01"')}</div></div><div id="gstsummary" class="summary"></div><div class="panelbody gst-action-stack"><button type="button" id="gstpreview" class="primary">Review tax invoice →</button><button type="button" id="gstdraft">↓ Download draft PDF</button><p class="form-note">PDFs print on one A4 page, including warranty details. Review and draft downloads do not mark bikes sold or consume an invoice number.</p></div></section></aside></div><section id="gstreview" hidden></section></form>`,
     route,
   );
   const form = document.querySelector("#gstinvoiceform");
   form.address.required = true;
   let review = null;
-  const payload = () => ({
-    requestKey: key,
-    ...(quotationId ? { quotationId } : {}),
-    ...Object.fromEntries(new FormData(form)),
-    lines: [...document.querySelectorAll("#gstlines .line")].map((row) => ({
-      id: row.querySelector("select").value,
-      price: row.querySelector(".bike-price").value,
-      components: Object.fromEntries(
-        [...row.querySelectorAll("[data-component]")].map((input) => [
-          input.dataset.component,
-          input.value,
-        ]),
-      ),
-    })),
-  });
+  const payload = () => {
+    const raw = Object.fromEntries(new FormData(form));
+    const isLoan = raw.method === "Loan / Finance";
+    if (isLoan) {
+      const vendor = raw.loanVendor || "Ride For You";
+      const isRfy = vendor === "Ride For You";
+      const dpRupees = Number(raw.loanDownPayment || 0);
+      raw.paid = dpRupees;
+      raw.isLoan = true;
+      raw.loan = {
+        providerType: isRfy ? "ride_for_you" : "external",
+        vendorName:
+          vendor === "Other"
+            ? raw.customVendorName || "External Financer"
+            : vendor,
+        fileReference: raw.loanFileRef || "",
+        downPayment: Math.round(dpRupees * 100),
+        downPaymentMethod: raw.loanDownPaymentMethod || "UPI",
+        interestRate: Number(raw.loanInterestRate || 12),
+        tenureMonths: Number(raw.loanTenure || 12),
+        firstEmiDate: raw.loanFirstEmiDate || "",
+      };
+    }
+    return {
+      requestKey: key,
+      ...(quotationId ? { quotationId } : {}),
+      ...raw,
+      lines: [...document.querySelectorAll("#gstlines .line")].map((row) => ({
+        id: row.querySelector("select").value,
+        price: row.querySelector(".bike-price").value,
+        components: Object.fromEntries(
+          [...row.querySelectorAll("[data-component]")].map((input) => [
+            input.dataset.component,
+            input.value,
+          ]),
+        ),
+      })),
+    };
+  };
   const invalidate = () => {
     review = null;
     document.querySelector("#gstreview").hidden = true;
   };
+  function updateLoanVisibility() {
+    const isLoan = form.method.value === "Loan / Finance";
+    const p = document.querySelector("#loan-options-panel");
+    if (!p) return;
+    p.hidden = !isLoan;
+    if (isLoan) {
+      const vendor = form.loanVendor?.value || "Ride For You";
+      const isRfy = vendor === "Ride For You";
+      const isOther = vendor === "Other";
+
+      const rfyTenure = document.querySelector("#rfyTenureWrap");
+      const rfyRate = document.querySelector("#rfyRateWrap");
+      const rfyFirst = document.querySelector("#rfyFirstEmiWrap");
+      const customVendor = document.querySelector("#customVendorWrap");
+      const fileRef = document.querySelector("#loanFileRefWrap");
+
+      if (rfyTenure) rfyTenure.hidden = !isRfy;
+      if (rfyRate) rfyRate.hidden = !isRfy;
+      if (rfyFirst) rfyFirst.hidden = !isRfy;
+      if (customVendor) customVendor.hidden = !isOther;
+      if (fileRef) fileRef.hidden = isRfy;
+
+      if (form.loanDownPayment && form.paid) {
+        form.paid.value = form.loanDownPayment.value;
+      }
+    }
+  }
   function calculate() {
     try {
+      updateLoanVisibility();
       const body = payload(),
         lines = body.lines
           .filter((line) => line.id)
@@ -266,6 +385,47 @@ export async function gstInvoiceForm({
       );
       result.paid = Math.round(Number(body.paid || 0) * 100);
       document.querySelector("#gstsummary").innerHTML = totalsHtml(result);
+
+      if (
+        body.method === "Loan / Finance" &&
+        body.loan?.providerType === "ride_for_you"
+      ) {
+        const principal = Math.max(0, result.total - (result.paid || 0));
+        const rate = body.loan.interestRate;
+        const months = body.loan.tenureMonths;
+        const totalInterest = Math.round((principal * rate * months) / 1200);
+        const totalPayable = principal + totalInterest;
+        const monthlyEmi = months > 0 ? Math.round(totalPayable / months) : 0;
+
+        const previewWrap = document.querySelector("#rfyEmiPreview");
+        if (previewWrap) {
+          previewWrap.style.display = "block";
+          document.querySelector("#previewPrincipal").textContent =
+            "₹" +
+            (principal / 100).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+            });
+          document.querySelector("#previewInterest").textContent =
+            "₹" +
+            (totalInterest / 100).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+            });
+          document.querySelector("#previewEmi").textContent =
+            "₹" +
+            (monthlyEmi / 100).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+            }) +
+            " / mo";
+          document.querySelector("#previewPayable").textContent =
+            "₹" +
+            (totalPayable / 100).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+            });
+        }
+      } else {
+        const previewWrap = document.querySelector("#rfyEmiPreview");
+        if (previewWrap) previewWrap.style.display = "none";
+      }
     } catch (e) {
       document.querySelector("#gstsummary").innerHTML =
         `<p class="muted">${esc(e.message)}</p>`;

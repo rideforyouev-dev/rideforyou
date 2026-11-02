@@ -17,6 +17,7 @@ import {
 } from "./public/gst.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { assertSinglePageInvoice } from "./gst-pdf.mjs";
+import { calculateLoan } from "./modules/loans/calculator.mjs";
 import {
   componentValues,
   assertComponentsAvailable,
@@ -188,6 +189,22 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
           body: JSON.parse(row.body),
           deletion: { deletedAt: deleted_at, reason },
         })),
+      loans: db
+        .prepare(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='loans'",
+        )
+        .get()
+        ? db
+            .prepare(
+              `SELECT l.*, i.number as invoice_number, b.model, b.brand, b.vin,
+                (SELECT COUNT(*) FROM loan_installments li WHERE li.loan_id=l.id AND li.status='overdue') as overdue_count
+               FROM loans l
+               LEFT JOIN invoices i ON i.id=l.invoice_id
+               LEFT JOIN bikes b ON b.id=l.bike_id
+               ORDER BY l.created DESC`,
+            )
+            .all()
+        : [],
     });
   });
   app.put("/api/settings", (req, res) => {
@@ -387,15 +404,89 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
     } catch (error) {
       fail(error.message);
     }
-    const paid = money(body.paid || 0, "amount received");
-    if (paid > totals.total)
-      fail("Amount received cannot exceed the invoice total.");
-    const method = text(body.method, "payment method", 30);
-    if (
-      !["Bank transfer", "UPI", "Cash", "Not received"].includes(method) ||
-      (method === "Not received" && paid)
-    )
-      fail("Select a payment method matching the amount received.");
+    const isLoan =
+      body.isLoan === true ||
+      body.method === "Loan / Finance" ||
+      Boolean(body.loan);
+    let loan = null;
+    let paid = money(body.paid || 0, "amount received");
+    let method = text(body.method || "Cash", "payment method", 30);
+    if (isLoan) {
+      method = "Loan / Finance";
+      const l = body.loan || {};
+      const providerType =
+        l.providerType === "ride_for_you" ? "ride_for_you" : "external";
+      const vendorName = text(
+        l.vendorName ||
+          (providerType === "ride_for_you"
+            ? "Ride For You"
+            : "External Financer"),
+        "loan vendor",
+        100,
+      );
+      const downPayment = money(
+        l.downPayment !== undefined ? l.downPayment : (paid || 0),
+        "down payment",
+      );
+      if (downPayment >= totals.total) {
+        fail(
+          "Down payment cannot equal or exceed total invoice amount when financing.",
+        );
+      }
+      paid = downPayment;
+      const downPaymentMethod = text(
+        l.downPaymentMethod || (downPayment > 0 ? "UPI" : "Not received"),
+        "down payment method",
+        30,
+      );
+      const fileReference = text(
+        l.fileReference || "",
+        "file reference",
+        100,
+        false,
+      );
+      const interestRate = Number(l.interestRate ?? 12);
+      const tenureMonths = Math.floor(Number(l.tenureMonths ?? 12));
+      if (providerType === "ride_for_you") {
+        if (tenureMonths < 1 || tenureMonths > 60)
+          fail("Loan tenure must be between 1 and 60 months.");
+        if (interestRate < 0) fail("Interest rate must be zero or positive.");
+      }
+      const principal = totals.total - downPayment;
+      const totalInterest =
+        providerType === "ride_for_you"
+          ? Math.round((principal * interestRate * tenureMonths) / 1200)
+          : 0;
+      const totalPayable = principal + totalInterest;
+      const monthlyEmi =
+        providerType === "ride_for_you"
+          ? Math.round(totalPayable / tenureMonths)
+          : 0;
+
+      loan = {
+        providerType,
+        vendorName,
+        fileReference,
+        principal,
+        downPayment,
+        downPaymentMethod,
+        interestRate,
+        tenureMonths,
+        totalInterest,
+        totalPayable,
+        monthlyEmi,
+        firstEmiDate: text(l.firstEmiDate || "", "first EMI date", 10, false),
+        notes: text(l.notes || "", "loan notes", 500, false),
+      };
+    } else {
+      if (paid > totals.total)
+        fail("Amount received cannot exceed the invoice total.");
+      if (
+        !["Bank transfer", "UPI", "Cash", "Not received"].includes(method) ||
+        (method === "Not received" && paid)
+      )
+        fail("Select a payment method matching the amount received.");
+    }
     const warranty = {};
     for (const key of [
       "vehicle",
@@ -440,6 +531,7 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       paid,
       balance: totals.total - paid,
       method,
+      loan,
       salesperson: text(body.salesperson, "salesperson", 100, false),
       notes: text(body.notes, "notes", 1500, false),
       deliveryAddress: text(
@@ -550,6 +642,69 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       for (const line of invoice.lines)
         db.prepare("INSERT INTO invoice_bikes VALUES(?,?)").run(id, line.id);
       linkQuotation(db, invoice.quotationId, id);
+      if (invoice.loan) {
+        const l = invoice.loan;
+        const loanId = randomUUID();
+        const now = new Date().toISOString();
+        const bikeId = invoice.lines[0]?.id || null;
+        db.prepare(
+          `INSERT INTO loans(
+            id, invoice_id, bike_id, customer_name, customer_phone,
+            provider_type, vendor_name, file_reference, principal, down_payment,
+            down_payment_method, interest_rate, tenure_months, monthly_emi,
+            total_interest, total_payable, total_paid, balance, status, notes,
+            created, updated
+          ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ).run(
+          loanId,
+          id,
+          bikeId,
+          invoice.customer.name,
+          invoice.customer.phone,
+          l.providerType,
+          l.vendorName,
+          l.fileReference || null,
+          l.principal,
+          l.downPayment,
+          l.downPaymentMethod || "UPI",
+          l.interestRate,
+          l.tenureMonths,
+          l.monthlyEmi,
+          l.totalInterest,
+          l.totalPayable,
+          0,
+          l.totalPayable,
+          "active",
+          l.notes || null,
+          now,
+          now,
+        );
+
+        if (l.providerType === "ride_for_you" && l.tenureMonths > 0) {
+          const calc = calculateLoan({
+            invoiceTotal: invoice.total,
+            downPayment: l.downPayment,
+            interestRate: l.interestRate,
+            tenureMonths: l.tenureMonths,
+            startDate: l.firstEmiDate || invoice.date,
+          });
+          for (const inst of calc.installments) {
+            db.prepare(
+              `INSERT INTO loan_installments(
+                id, loan_id, installment_number, due_date, amount, paid_amount, status
+              ) VALUES(?,?,?,?,?,?,?)`,
+            ).run(
+              randomUUID(),
+              loanId,
+              inst.installmentNumber,
+              inst.dueDate,
+              inst.amount,
+              0,
+              "pending",
+            );
+          }
+        }
+      }
       db.exec("COMMIT");
       res.json({ id });
     } catch (error) {

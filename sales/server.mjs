@@ -17,6 +17,7 @@ import { inventoryImport } from "./inventory-import.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { gstInvoiceRoutes } from "./gst-invoices.mjs";
 import { serviceRoutes } from "./service.mjs";
+import { loanRoutes } from "./modules/loans/routes.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url));
 if (existsSync(path.join(root, ".env")))
   process.loadEnvFile(path.join(root, ".env"));
@@ -96,6 +97,7 @@ quotationRoutes(db, app, { root });
 invoiceDeletionRoutes(db, app);
 serviceRoutes(db, app, { text, money });
 inventoryImport(db, app, { text, money });
+loanRoutes(db, app);
 app.get("/api/invoices/:id/pdf", (req, res) => {
   const row = db
     .prepare("SELECT * FROM invoices WHERE id=?")

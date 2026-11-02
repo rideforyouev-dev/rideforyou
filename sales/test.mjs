@@ -11,6 +11,7 @@ import { invoicePdf } from "./invoice-pdf.mjs";
 import { serviceChecks } from "./service-checks.mjs";
 import { commerceChecks } from "./tests/commerce-checks.mjs";
 import { invoiceDeletionChecks } from "./tests/invoice-deletion-checks.mjs";
+import { loanChecks } from "./tests/loan-checks.mjs";
 
 test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-sales-test-"));
@@ -579,6 +580,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     await serviceChecks(req, id, invoice.id, bike);
     await commerceChecks(req);
     await invoiceDeletionChecks(req, path.join(folder, "sales.sqlite"));
+    await loanChecks(req, path.join(folder, "sales.sqlite"));
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
     const otp2 = await (

@@ -39,10 +39,24 @@ function review(db, id) {
       "SELECT COUNT(*) n FROM batteries WHERE installed_bike_id IN (SELECT bike_id FROM invoice_bikes WHERE invoice_id=?)",
     )
     .get(id).n;
+  const hasLoanTable = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='loans'")
+    .get();
+  const loanPaymentCount = hasLoanTable
+    ? db
+        .prepare(
+          "SELECT COUNT(*) n FROM loan_payments lp JOIN loans l ON l.id=lp.loan_id WHERE l.invoice_id=?",
+        )
+        .get(id)?.n || 0
+    : 0;
   const blockers = [];
   if (serviceCount)
     blockers.push(
       "This invoice has service history. Keep the invoice so the bike, complaint and repair records remain linked.",
+    );
+  if (loanPaymentCount)
+    blockers.push(
+      "This invoice has recorded loan EMI payments. Adjust or settle the loan account before deleting.",
     );
   if (installedCount)
     blockers.push(
@@ -164,6 +178,17 @@ export function invoiceDeletionRoutes(db, app) {
         db.prepare("DELETE FROM invoice_batteries WHERE invoice_id=?").run(
           req.params.id,
         );
+        const hasLoans = db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='loans'",
+          )
+          .get();
+        if (hasLoans) {
+          db.prepare(
+            "DELETE FROM loan_installments WHERE loan_id IN (SELECT id FROM loans WHERE invoice_id=?)",
+          ).run(req.params.id);
+          db.prepare("DELETE FROM loans WHERE invoice_id=?").run(req.params.id);
+        }
         for (const b of r.bikes) {
           if (
             db

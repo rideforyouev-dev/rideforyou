@@ -168,7 +168,9 @@ function planPage(doc, b, number, root, copy, p) {
       ? b.paymentTerms
         ? "Payment terms: " + b.paymentTerms
         : "Payment terms: As agreed at sale"
-      : `Payment: ${b.method} | ${b.balance === 0 ? "Paid" : b.paid ? "Partially paid" : "Unpaid"}`,
+      : b.loan
+        ? `Payment: Financed (${b.loan.vendorName}) | Down payment: INR ${money(b.loan.downPayment || b.paid)}`
+        : `Payment: ${b.method} | ${b.balance === 0 ? "Paid" : b.paid ? "Partially paid" : "Unpaid"}`,
     b.salesperson ? "Salesperson: " + b.salesperson : "",
     b.quotationNumber ? "Quotation reference: " + b.quotationNumber : "",
   ].filter(Boolean);
