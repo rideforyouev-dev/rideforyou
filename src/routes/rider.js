@@ -1,0 +1,19 @@
+const express = require('express');
+const router = express.Router();
+const riderController = require('../controllers/riderController');
+const { protect } = require('../middleware/authMiddleware');
+
+// All rider routes are protected (Admin only)
+router.use(protect);
+
+router.get('/', riderController.getRiders);
+router.post('/', riderController.addRider);
+router.put('/:id', riderController.updateRider);
+router.get('/:id/details', riderController.getRiderDetails);
+router.post('/:id/send-reminder', riderController.sendReminder);
+router.post('/:id/complaints', riderController.addComplaint);
+router.post('/:id/damage', riderController.addDamage);
+router.patch('/:id/status', riderController.updateStatus);
+router.delete('/:id', riderController.deleteRider);
+
+module.exports = router;

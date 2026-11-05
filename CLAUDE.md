@@ -1,71 +1,80 @@
-# Ride For You — Rider App (NEW BUILD, NOT YET LIVE)
+# Ride For You — Ops Dashboard (LEGACY, LIVE IN PRODUCTION)
 
 ## Read this first: there are two Ride For You codebases
 
-This is the **new build**: customer-facing mobile app, new backend, new admin
-dashboard. It is **not** the system currently running Balram's business.
+This is the **old ops dashboard**. It is the one currently running Balram's
+business and taking real money. It is **not** the new rider app.
 
-|                  | **This repo**                                  | The old dashboard                     |
-| ---------------- | ---------------------------------------------- | ------------------------------------- |
-| What it is       | Rider mobile app + new backend + new admin     | Internal ops dashboard, admin-only    |
-| Folder           | `C:\Users\madte\ride-for-you`                   | `D:\Dev\madtech\ride`                 |
-| GitHub           | `madtechsolutions2026/ride-for-you-app`         | `Madhukunchalaa/ride-for-you`         |
-| Stack            | Express + Prisma/Postgres, Expo RN, React admin | Express + MongoDB/Mongoose, React     |
-| Status           | In development                                  | **Live. Real riders, real payments.** |
+|                  | **This repo**                          | The new app                                    |
+| ---------------- | -------------------------------------- | ---------------------------------------------- |
+| What it is       | Internal ops dashboard, admin-only     | Customer-facing rider app + new admin           |
+| Folder           | `D:\Dev\madtech\ride`                  | `C:\Users\madte\ride-for-you`                   |
+| GitHub           | `Madhukunchalaa/ride-for-you`          | `madtechsolutions2026/ride-for-you-app`         |
+| Stack            | Express + MongoDB/Mongoose, React (Vite) client | Express + Prisma/Postgres, Expo RN, React admin |
+| Status           | **Live. Real riders, real payments.**  | In development                                  |
 
-The names are crossed over: this folder is called `ride-for-you`, but the repo
-actually *named* `ride-for-you` is the old dashboard. Check the stack to be
-certain — **Prisma means you are here; Mongoose means you are in the old one.**
+The names are crossed over: this repo is the one *named* `ride-for-you`, while
+the new app is the one whose *folder* is called `ride-for-you`. Check the stack
+to be certain — **Mongoose means you are here; Prisma means you are in the new app.**
 
-Bugs Balram reports against "the dashboard" are almost always the old system.
-Nothing here is taking live traffic yet, so a defect reported by a real rider
-did not come from this code.
+When Balram reports a problem with "the dashboard", he means this repo. When he
+asks about "the app", he means the other one.
+
+## What this system does
+
+Weekly EV bike rental management for the existing business:
+
+- Rider records, deployment and return, vehicle assignment
+- Weekly rent collection via Razorpay and PhonePe payment links
+- WhatsApp reminders on an escalation ladder (normal → warning → final)
+- Recovery and police-recovery buckets for non-payers
+- Invoices, expenses, payroll, analytics
+
+## Domain vocabulary → schema
+
+Balram describes things in business terms. The mapping is not obvious:
+
+| He says              | Field                |
+| -------------------- | -------------------- |
+| deployment date      | `rider.deployDate`   |
+| next payment date    | `rider.returnDate`   |
+| weeks paid           | `rider.totalWeeks`   |
+
+`returnDate` is **not** a date the bike comes back — it is the next rent due
+date. The reminder engine drives everything off it.
+
+## The billing rule (do not break this again)
+
+Every due date sits exactly N whole weeks after `deployDate`. Paying does not
+move the anniversary — a rider who pays five days late still owes those days.
+`src/utils/scheduleHelper.js` is the only place that advances a due date, and
+every caller must chain from the **previous due date**, never from `new Date()`.
+
+Anchoring to the payment date silently forgives overdue rent and walks the
+rider's cycle permanently off their deploy date. That bug shipped once, in both
+payment webhooks, and cost real money before the client spotted it.
+
+`audit_schedule_drift.js` (read-only) lists riders whose cycle has already
+drifted. Run it before and after anything that touches billing dates.
 
 ## Layout
 
 ```
-backend/   Express + TypeScript + Prisma + Postgres
-mobile/    Expo / React Native (18 screens)
-admin/     React + Vite, built into admin/dist and served at /admin/
+server.js              entry point
+src/controllers/       route handlers — paymentController.js holds the webhooks
+src/services/          automatedReminders.js (cron), paymentScheduler.js
+src/utils/             scheduleHelper.js, paymentReminders.js, cronJobs.js
+src/models/            Mongoose schemas — Rider.js is the core one
+client/                React admin UI
+*.js at repo root      one-off operational scripts, not part of the app
 ```
 
-## What is built
+## Cautions
 
-Phone+OTP auth, KYC with R2 document upload, bookings with timed holds,
-handover/return, weekly invoicing, the full collections ladder (reminder →
-final warning → recovery job), wallet credit, battery swaps, support tickets,
-employees and payroll, reports.
-
-Payments: both halves are written — order creation and webhook, signatures
-verified, settlement idempotent on the provider's payment id. It starts working
-when real keys land in the environment (`PAYMENTS_MODE`). That is configuration,
-not development.
-
-## What is NOT built — do not describe these as working
-
-- **IoT telemetry ingestion.** `Bike.lastLat` / `lastLng` / `lastSeenAt` exist
-  in the schema and the fleet map reads them, but **nothing writes them**. There
-  is no ingest route, no device identity field (no IMEI / device id on `Bike`),
-  and no device authentication.
-- **Fleet map remote commands are simulated.** `handleCommand` in
-  `admin/src/components/FleetLiveMap.tsx` is a `setTimeout` that prints
-  "✓ Command confirmed by onboard IoT ECU" without contacting anything.
-- **Fleet map stats are hardcoded literals** — "GPS Lock: 54/54 Online",
-  "Avg Fleet SoC: 78%", "2-Min Swaps Today: 89". They display those numbers
-  whether or not any device is connected. Replace before showing the client.
-- `README.md` is stale: it claims SQLite and "the rest is static UI". Neither
-  is true any more — see `DEPLOY.md` for how it actually deploys (Render +
-  Postgres).
-
-## Billing model
-
-Week 1 is raised at handover (`ops.controller.ts`). Every later week is chained
-by the nightly job in `backend/src/services/collections.ts`: `periodStart` is
-the previous `periodEnd`, so due dates stay anchored regardless of when payment
-arrives. Keep it that way — the old dashboard shipped the opposite bug and it
-silently forgave overdue rent.
-
-**Deployment caveat:** Render's free tier sleeps after ~15 minutes idle, and the
-midnight billing job is an in-process timer, so it sleeps too. Billing then only
-runs when something wakes the service. If riders report bills arriving at odd
-times, that is the cause — not the date arithmetic.
+- Automated WhatsApp reminders run on a cron **every minute** and message real
+  riders. `PAUSE_AUTO_REMINDERS=true` in `.env` is the kill switch — set it
+  before testing anything that touches the reminder path.
+- The payment webhooks are idempotent on the provider's payment id. Keep them
+  that way; gateways retry.
+- Root-level `test_*.js` and `fix_*.js` scripts hit the live database. Read
+  before running.

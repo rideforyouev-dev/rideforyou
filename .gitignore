@@ -1,28 +1,6 @@
 node_modules/
-.expo/
 .env
 dist/
 build/
-web-build/
-*.log
 .DS_Store
-
-# IDE
-.idea/
-
-# Expo native (regenerate with: npx expo prebuild)
-mobile/android/
-mobile/ios/
-
-# SQLite artefacts — the app uses Postgres. A committed .db file gets baked
-# into the deploy image and silently reverts live data on every restart.
-*.db
-*.db-journal
-backend/prisma/dev.db
-
-# admin build output — served straight from admin/dist now
-backend/public/
-
-# Generated PDF previews
-output/pdf/
-tmp/pdfs/
+*.log
