@@ -983,6 +983,45 @@ td small {
   font-size: 11px;
   line-height: 1.5;
 }
+/* Customer book and WhatsApp campaigns */
+.nav { min-height: 0; overflow-y: auto; }
+.marketing-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.marketing-permission { margin-top: 24px; background: #f2f7f1; border: 1px solid #d9e6d8; padding: 22px; border-radius: 6px; }
+.marketing-permission > label { display: flex; gap: 10px; align-items: start; font-weight: 600; line-height: 1.6; }
+.marketing-permission input[type="checkbox"] { width: 18px; height: 18px; margin-top: 3px; accent-color: #1f6f43; flex-shrink: 0; }
+.marketing-muted-tag { color: #69776b; background: #eef0eb; }
+.marketing-composer { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .85fr); gap: 25px; align-items: start; }
+.marketing-composer > div { min-width: 0; }
+.marketing-composer .field { margin-bottom: 20px; }
+.marketing-composer textarea { min-height: 165px; }
+.marketing-upload { border: 1px dashed #aac5ad; background: #f5f9f3; border-radius: 7px; display: grid; gap: 10px; text-align: center; padding: 28px 18px; cursor: pointer; }
+.marketing-upload > span { font-size: 29px; color: #1f6f43; }
+.marketing-upload small { color: #687c69; }
+.marketing-upload input { margin: 8px auto 0; max-width: 100%; }
+.marketing-phone { background: #e9efe4; border: 1px solid #d6e0d0; border-radius: 10px; overflow: hidden; padding: 0 15px 24px; }
+.marketing-phone-header { margin: 0 -15px 22px; background: #174b36; color: white; padding: 18px; display: flex; gap: 11px; align-items: center; }
+.marketing-phone-header > span { font-size: 24px; }
+.marketing-phone-header small { display: block; color: #b7d6c5; margin-top: 3px; font-size: 10px; }
+.marketing-bubble { background: white; padding: 7px; margin-right: 18px; border-radius: 0 7px 7px; box-shadow: 0 2px 3px #22472b12; overflow: hidden; }
+.marketing-bubble img { width: 100%; border-radius: 4px; max-height: 310px; object-fit: contain; background: #edf1e9; }
+.marketing-bubble img[hidden] { display: none; }
+.marketing-bubble .marketing-greeting { font-weight: 600; padding: 5px 7px; margin: 6px 0; }
+.marketing-bubble .prewrap { padding: 3px 7px 14px; line-height: 1.65; }
+.marketing-bubble > small { display: block; padding: 7px; color: #8a9487; font-size: 10px; }
+.marketing-saved-image { max-width: 100%; max-height: 330px; display: block; margin: 0 auto 22px; border-radius: 6px; }
+.marketing-result-counts { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 24px; }
+.marketing-result-counts > span { padding: 10px 14px; border-radius: 5px; background: #f0f5ee; font-size: 12px; }
+.marketing-review { margin-top: 25px; border-top: 1px solid #dce5d8; padding-top: 15px; }
+.marketing-review h3 { font-size: 17px; line-height: 1.6; }
+.marketing-recipient-list { max-height: 300px; overflow: auto; margin: 18px 0; }
+.marketing-recipient-list p { display: flex; flex-wrap: wrap; gap: 5px 15px; justify-content: space-between; border-bottom: 1px solid #eef1eb; padding: 10px 0; margin: 0; font-size: 12px; }
+.marketing-intro { background: #eaf0e2; border: 1px solid #dce5d2; border-radius: 8px; padding: 35px 40px; margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; overflow: hidden; }
+.marketing-intro h2 { font-size: clamp(26px, 3vw, 40px); font-weight: 500; line-height: 1.15; letter-spacing: -1.4px; margin: 16px 0; }
+.marketing-intro p { color: #6b8066; line-height: 1.8; }
+.marketing-intro-art { color: #1f6f43; font-size: 150px; line-height: 1; text-align: center; padding: 0 30px; }
+.marketing-intro-art span { font-size: 9px; letter-spacing: 2px; display: block; margin-top: 15px; }
+@media (max-width: 1100px) { .marketing-composer { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .marketing-stats { grid-template-columns: 1fr; } .marketing-intro { padding: 25px; } .marketing-intro-art { font-size: 80px; padding: 0; } .marketing-intro-art span { display: none; } .marketing-permission { padding: 16px; } }
 .line .bike-price,
 .line .remove-bike {
   align-self: start;

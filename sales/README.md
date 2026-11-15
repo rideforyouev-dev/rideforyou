@@ -83,6 +83,24 @@ Before the first production GST schema upgrade, the service saves a consistent S
 
 Classification and rate references: [DGCI&S Chapter 87](https://www.dgciskol.gov.in/writereaddata/Downloads/20170601190103CHP_87.pdf), [2024 Gazette adding the pedal-assisted subtype](https://egazette.gov.in/WriteReadData/2024/256436.pdf), [PIB EV tax guidance](https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159436&lang=1&reg=3), and [GST invoice particulars](https://tutorial.gst.gov.in/downloads/news/welcome_kit_for_new_taxpyers.pdf). The 871160 preset is an existing classification, not a newly generated per-bike number.
 
+## Customer contacts and WhatsApp campaigns
+
+Customers stores one normalized Indian mobile number per customer. Add contacts manually or use **Import invoice contacts**; importing never assumes permission for promotions and never changes an invoice. Record the customer's permission source before subscribing them. Edit a contact and uncheck promotions to exclude them from future campaigns and unsent queue entries.
+
+Under **WhatsApp campaigns**, compose up to 900 characters and optionally choose a JPG/PNG flyer up to 2 MB. Save a draft, review the exact customer list, then use **Send to all**. Sending is a real external action; drafts and reviews send nothing. A persisted SQLite queue sends one message at a time, keeps a recipient snapshot, prevents duplicate send requests, and supports stopping remaining messages. Keep one active sales instance as with the existing database deployment.
+
+The payload reuses the rental admin's Way2Chats contract: `custom_broadcast` / `custom_broadcast_media`, `en_GB`, body parameters `[customerName, customText]` and image `headerParams: [{type: 'image', url}]`. The same `WAY2CHATS_API_KEY`, `WAY2CHATS_PHONE_ID` and `WAY2CHATS_URL` are used. Template names/language can be overridden with `WAY2CHATS_MARKETING_*` in `.env.example`. Templates must be approved and available on that sender; the source code's prior configuration is not proof of current provider approval. Custom text is inserted into the approved template, not sent as an unrestricted message.
+
+For image campaigns, configure `PUBLIC_ORIGIN` to the public HTTPS origin. The sales service appends `BASE_PATH` and a random media ID. `/campaign-media/:id` serves only that flyer without login so WhatsApp can fetch it; customer records and campaigns stay authenticated. Flyers are stored on the existing persistent SQLite volume. Local-only image campaigns can be drafted but not delivered using a loopback URL. No credentials are exposed to the browser.
+
+Accepted means a provider message ID was returned, not delivered/read. Rejected messages and uncertain responses are shown separately. Network errors, malformed successes, provider 5xx responses and sends interrupted by a process restart become **Check provider** and are never automatically retried. Check provider logs before creating another campaign for those recipients. There is no delivery webhook or automatic inbound STOP sync in this module; record unsubscribe requests through Customers before further sends. Pending recipients are rechecked for subscription and phone changes before each send. Sent invoice/customer snapshots remain unchanged.
+
+References: [WhatsApp messaging policy](https://whatsappbusiness.com/policy/) and [Meta's media-template API example](https://www.postman.com/meta/whatsapp-business-platform/request/2qbotrb/send-message-template-media).
+
+### Marketing verification
+
+`tests/marketing.test.mjs` uses a disposable database and mock provider. No real customer messages or live sales records are used for automated checks.
+
 ## Verification
 
 npm test creates disposable SQLite databases and a mock WhatsApp endpoint. It covers auth, CSV atomicity/retries, inclusive/exclusive GST, 500 discount/rounding scenarios, state and GSTIN validation, FY boundaries, migration snapshots, stock locks, numbering, stale reviews, idempotency, warranty snapshots, B2B IRN guards and PDFs. Automated tests do not send real messages or insert demo records into production.

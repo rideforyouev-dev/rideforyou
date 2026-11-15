@@ -18,6 +18,7 @@ import { invoicePdf } from "./invoice-pdf.mjs";
 import { gstInvoiceRoutes } from "./gst-invoices.mjs";
 import { serviceRoutes } from "./service.mjs";
 import { loanRoutes } from "./modules/loans/routes.mjs";
+import { campaignMedia, marketingRoutes } from "./modules/marketing/routes.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url));
 if (existsSync(path.join(root, ".env")))
   process.loadEnvFile(path.join(root, ".env"));
@@ -50,6 +51,7 @@ for (const origin of publicOrigins) {
       "Public origins must be exact HTTP(S) origins, without paths.",
     );
 }
+app.use("/api/campaigns", express.json({ limit: "3mb" }));
 app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   res.set({
@@ -68,6 +70,7 @@ app.use((req, res, next) => {
     return res.status(403).json({ error: "Request origin is not allowed." });
   next();
 });
+campaignMedia(db, app);
 app.use("/api", authRouter(db));
 app.use("/api", (req, res, next) => {
   const token = req.headers.cookie
@@ -98,6 +101,7 @@ invoiceDeletionRoutes(db, app);
 serviceRoutes(db, app, { text, money });
 inventoryImport(db, app, { text, money });
 loanRoutes(db, app);
+const marketing = marketingRoutes(db, app);
 app.get("/api/invoices/:id/pdf", (req, res) => {
   const row = db
     .prepare("SELECT * FROM invoices WHERE id=?")
@@ -163,9 +167,10 @@ const server = parent.listen(
       "Ride For You Sales: http://127.0.0.1:" + (process.env.PORT || 3050),
     ),
 );
-process.on("SIGTERM", () =>
+process.on("SIGTERM", () => {
+  marketing.stop();
   server.close(() => {
     db.close();
     process.exit(0);
-  }),
-);
+  });
+});

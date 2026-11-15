@@ -89,6 +89,8 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(page.includes(`src="${prefix}/app.js"`));
     assert.equal((await fetch(base + "/logo.png")).status, 200);
     assert.equal((await req("/state")).status, 401);
+    assert.equal((await req("/customers")).status, 401);
+    assert.equal((await req("/campaigns")).status, 401);
     assert.equal((await req("/invoices/missing", "DELETE", {})).status, 401);
     assert.equal((await req("/services")).status, 401);
     assert.equal((await req("/technicians")).status, 401);
