@@ -14,6 +14,7 @@ sales/
     migrations/003-commerce.mjs Versioned battery and quotation schema upgrade
     migrations/004-invoice-deletion.mjs Retained invoice deletion audit schema
     migrations/005-loans.mjs    Versioned loan, installment and EMI payment schema
+    migrations/006-marketing.mjs Customer permissions, campaigns, flyers and durable WhatsApp outbox
   modules/
     batteries/routes.mjs        Serialized battery stock and read-only sold history
     batteries/invoices.mjs      Review and issue separate battery invoices
@@ -22,6 +23,8 @@ sales/
     invoices/deletion.mjs       Reviewed deletion, stock release and immutable audit
     loans/calculator.mjs        Integer-paise EMI, interest and monthly schedule generator
     loans/routes.mjs            Loan listing, details, manual monthly EMI payment ledger
+    marketing/routes.mjs        Contact book, campaign review/queue, media serving and send progress
+    marketing/provider.mjs      Existing Way2Chats template contract; no automatic uncertain retry
   public/
     app.js                     Navigation, authentication and existing bike screens
     domain/tax-metadata.mjs     Existing EV policy, states and GSTIN validation
@@ -31,6 +34,7 @@ sales/
     modules/quotations/ui.mjs   Quotation creation, review, printing and conversion
     modules/documents/view.mjs  Shared battery/quotation document preview
     modules/loans/ui.mjs        Loans dashboard, repayment schedules and EMI collection modal
+    modules/marketing/ui.mjs    Customer contacts, preferences, campaign composer and recipient review
   tests/
     domain.test.mjs            Generic tax and migration checks
     commerce-checks.mjs        Authenticated battery/quotation integration checks
